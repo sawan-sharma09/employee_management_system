@@ -56,3 +56,39 @@ $ cd employee_management_system
 
 # Run the project
 $ go run main.go
+
+---------------------
+SEQUENCE OF EXECUTION:
+
+1.Import Excel Data:
+
+ ->Execute readexcel.go in the excel package to extract the Excel file.
+ ->Use the endpoint "/read-excel-sheet" defined in router.go to read the data and display it to the user in a readable JSON format.
+
+2.Store Data in Mysql and Redis Cache:
+
+ ->Use the endpoint "/store-imported-data" defined in router.go to extract the Excel file and store it in Mysql and Redis Cache.
+ ->The connections of Mysql and Redis are kept global in "conn.go" file.
+
+3.Get specific Employee Data:
+
+ ->Use the endpoint "/get_employee/{id}" defined in router.go to get the data of any specific employee by passing the employee ID in the request URL.
+
+4.Create a new Employee Data:
+
+ ->Use the endpoint "/create_employee" defined in `router.go` to create a new Employee.
+ ->The created data will get stored in both Mysql and Redis. 
+
+5.Update an Existing Employee:
+
+ ->Use the endpoint /update_employee" defined in `router.go` to update any existing employee.
+ ->The data will be first updated in Redis and that updated data will be stored in Mysql database.
+
+6.Delete an Employee record:
+
+ ->Use the endpoint /delete_employee/{id} defined in `router.go` to delete an employee
+ ->The data will be deleted both from Mysql and Redis
+
+7.Clear Cache:
+
+ ->Use the endpoint "/clear_cache" to clear the cache from Redis.

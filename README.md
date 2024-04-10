@@ -81,7 +81,7 @@ SEQUENCE OF EXECUTION:
 
 5.Update an Existing Employee:
 
- ->Use the endpoint /update_employee" defined in `router.go` to update any existing employee.
+ ->Use the endpoint "/update_employee" defined in `router.go` to update any existing employee.
  ->The data will be first updated in Redis and that updated data will be stored in Mysql database.
 
 6.Delete an Employee record:

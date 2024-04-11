@@ -27,7 +27,7 @@ func StoreImporteddata(w http.ResponseWriter, r *http.Request) {
 	var emp util.Employee
 	for _, row := range rows[1:] {
 		// Read data from Excel row
-		if len(row) >= 3 {
+		if len(row) >= 1 {
 			emp.ID, _ = strconv.Atoi(row[0])
 			emp.Name = row[1]
 			emp.Department = row[2]

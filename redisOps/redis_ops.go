@@ -1,6 +1,7 @@
 package redisops
 
 import (
+	"errors"
 	"fmt"
 	"managedata/db"
 	"managedata/util"
@@ -61,6 +62,21 @@ func RedisDel(key string) error {
 	_, err := conn.Do("DEL", key)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func RedisKeyExists(redisKey string) error {
+	red_conn := db.RedisPool.Get()
+
+	exists, redisErr := redis.Bool(red_conn.Do("EXISTS", redisKey))
+
+	if redisErr != nil {
+		red_conn.Close()
+		fmt.Println("RedisErr: ", redisErr)
+		return errors.New("error in redis query")
+	} else if !exists {
+		return errors.New("employee id not found")
 	}
 	return nil
 }

@@ -1,0 +1,24 @@
+syntax="proto3";
+
+package grpc_services;
+option go_package="grpc_services/pb";
+
+message Emp{
+    int32 Id=1;
+    string Name=2;
+    string Department=3;
+    float Salary=4;
+}
+
+message EmpRequest{
+    Emp empdata=1;
+}
+
+message EmpResponse{
+    Emp result=1;
+}
+
+service EmpService{
+    rpc Bidi_Emp(stream EmpRequest)returns(stream EmpResponse){};
+}
+

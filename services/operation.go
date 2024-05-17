@@ -11,6 +11,7 @@ import (
 	"managedata/util"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 func Appstart(c *gin.Context) {
@@ -47,6 +48,17 @@ func CreateEmployee(c *gin.Context) {
 	if err != nil {
 		fmt.Println("error in NewDecoder: ", err)
 		c.String(http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	v := validator.New()
+
+	if validationErr := v.Struct(emp); validationErr != nil {
+		var validationErrors []string
+		for _, e := range validationErr.(validator.ValidationErrors) {
+			validationErrors = append(validationErrors, fmt.Sprintf("Field validation for '%s' failed on the '%s' tag", e.Field(), e.Tag()))
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
 		return
 	}
 

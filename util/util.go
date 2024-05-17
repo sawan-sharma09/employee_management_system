@@ -3,10 +3,10 @@ package util
 // Created this struct in a different package to avoid import cycle
 
 type Employee struct {
-	ID         int     `json:"id"`
-	Name       string  `json:"name"`
-	Department string  `json:"department"`
-	Salary     float64 `json:"salary"`
+	ID         int     `json:"id" validate:"required,gt=0" `
+	Name       string  `json:"name" validate:"required,min=2,max=30"`
+	Department string  `json:"department" validate:"required"`
+	Salary     float64 `json:"salary" validate:"required,gte=0"`
 }
 
 type Credentials struct {

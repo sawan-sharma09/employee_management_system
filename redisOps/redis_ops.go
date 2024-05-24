@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"managedata/app_errors"
 	initpack "managedata/init_pack"
 	"managedata/util"
 	"net/http"
@@ -77,7 +78,7 @@ func RedisKeyExists(redisKey string) error {
 	exists, redisErr := redis.Bool(red_conn.Do("EXISTS", redisKey))
 	if redisErr != nil {
 		red_conn.Close()
-		return errors.New("error in redis query" + redisErr.Error())
+		return errors.New("Error querying Redis:" + redisErr.Error())
 	} else if !exists {
 		return errors.New("employee id not found")
 	}
@@ -90,7 +91,9 @@ func ClearCache(c *gin.Context) {
 	redisconn.Close()
 	if err != nil {
 		fmt.Println("Error in Executing RedisCache clear Command ", err)
-		c.String(http.StatusInternalServerError, "Redis Flushall Query error: "+err.Error())
+		logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "ERROR", Message: app_errors.ErrCacheClear, Endpoint: c.Request.URL.Path, Status_code: http.StatusInternalServerError}
+		c.JSON(http.StatusInternalServerError, logDetails)
+		return
 	} else {
 		log.Println("Redis Cache Cleared at: ", time.Now())
 

@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"managedata/app_errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
@@ -17,7 +19,8 @@ func NewRateLimiter(rateLimit rate.Limit, burstLimit int) gin.HandlerFunc {
 			return
 		}
 		// return c.Status(fiber.StatusTooManyRequests).SendString("Rate limit exceeded")
-		c.JSON(http.StatusTooManyRequests, gin.H{"Message": "Rate Limit Exceeded"})
-		c.Abort()
+		logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "WARNING", Message: app_errors.ErrRateLimitExceeded, Endpoint: c.Request.URL.Path, Status_code: http.StatusTooManyRequests}
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, logDetails)
+
 	}
 }

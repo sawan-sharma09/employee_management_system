@@ -24,7 +24,7 @@ func CreateTableIfNotExists(tablename string, column []string) error {
 	);
 `, tablename, column[0], column[1], column[2], column[3])
 
-	_, err = initpack.Conn.Exec(createQuery)
+	_, err = initpack.DbConn.Exec(createQuery)
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func CreateTableIfNotExists(tablename string, column []string) error {
 
 func TableExists(tableName string) (bool, error) {
 	query := fmt.Sprintf("SHOW TABLES LIKE '%s'", tableName)
-	rows, err := initpack.Conn.Query(query)
+	rows, err := initpack.DbConn.Query(query)
 	if err != nil {
 		return false, err
 	}

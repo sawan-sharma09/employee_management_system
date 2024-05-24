@@ -3,6 +3,7 @@ package pubsubops
 import (
 	"context"
 	"fmt"
+	"managedata/app_errors"
 	initpack "managedata/init_pack"
 	"net/http"
 	"os"
@@ -30,7 +31,8 @@ func Pull_PubsubData(c *gin.Context) {
 	})
 	if err != nil {
 		fmt.Println("Error in pulling message from pubsub topic: ", err)
-		c.String(http.StatusInternalServerError, err.Error())
+		logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "INFO", Message: app_errors.ErrPubsubMessage, Endpoint: c.Request.URL.Path, Status_code: http.StatusInternalServerError}
+		c.JSON(http.StatusUnauthorized, logDetails)
 		return
 	}
 	c.Status(fiber.StatusOK)

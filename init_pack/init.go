@@ -3,6 +3,7 @@ package initpack
 import (
 	"context"
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -18,7 +19,7 @@ import (
 )
 
 var (
-	Conn      *sql.DB
+	DbConn    *sql.DB
 	RedisPool *redis.Pool
 	Client    *pubsub.Client
 	Topic     *pubsub.Topic
@@ -30,25 +31,47 @@ func init() {
 }
 func InitConn() {
 
+	var err error
+	var mysqlURL string
+
 	enverr := godotenv.Load("./config/secret.env")
 	if enverr != nil {
 		log.Fatal("Error loading .env file", enverr)
 	}
 
-	var err error
+	env := flag.String("env", "", "Specify the environment(dev/staging)")
+	flag.Parse()
+
+	//env flag
+	switch *env {
+	case "dev":
+		fmt.Println("Running in dev environment")
+		mysqlURL = os.ExpandEnv("$MYSQL_DB_URL")
+	case "stage":
+		fmt.Println("Running in stage environment")
+	default:
+		log.Fatal("Invalid environment. Please specify 'dev' or 'stage'.")
+	}
 
 	// Open a database connection
-	Conn, err = sql.Open("mysql", os.ExpandEnv("$MYSQL_DB_URL"))
+	DbConn, err = sql.Open("mysql", mysqlURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	DbConn.SetMaxOpenConns(100)                //The maximum number of open connections in the pool. This option controls the concurrency of database access. Once this limit is reached, further requests for connections will block until a connection becomes available.
+	DbConn.SetMaxIdleConns(30)                 // Maximum number of connections that can remain idle (i.e., not in use) in the pool at any given time. Keeping a certain number of idle connections can help improve performance by reducing the overhead of establishing new connections for subsequent database operations.
+	DbConn.SetConnMaxLifetime(0)               // Maximum lifetime of a connection (0 means no limit)
+	DbConn.SetConnMaxIdleTime(2 * time.Minute) // Maximum time a connection can be idle before it's closed
+
 	// Check if the connection is successful
-	err = Conn.Ping()
-	if err != nil {
-		log.Fatal(err)
+	dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if pingErr := DbConn.PingContext(dbCtx); pingErr != nil {
+		log.Fatal("Error pinging MySQL database: ", pingErr)
 	} else {
-		fmt.Println("Connected to MySQL!")
+		fmt.Println("MySQL db connected successfully")
 	}
 
 	//redis

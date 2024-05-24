@@ -2,10 +2,11 @@ package excel
 
 import (
 	"fmt"
-	"log"
+	"managedata/app_errors"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xuri/excelize/v2"
@@ -16,7 +17,7 @@ var FilePath string = "./docs/employee_details.xlsx"
 func OpenExcelFile() ([][]string, error) {
 	xlsx, err := excelize.OpenFile(FilePath)
 	if err != nil {
-		log.Fatal("Error in opening excel file :", err)
+		fmt.Println("Error in opening excel file :", err)
 		return nil, err
 	}
 
@@ -36,7 +37,6 @@ func readExcelFile() ([]map[string]string, error) {
 	// Open the excel file and return fetched rows
 	rows, err := OpenExcelFile()
 	if err != nil {
-		fmt.Println("Error in Opening Excel file")
 		return nil, err
 	}
 
@@ -65,7 +65,9 @@ func AccessFile(c *gin.Context) {
 	data, err := readExcelFile()
 	if err != nil {
 		fmt.Println("Error reading excel file: ", err)
-		log.Fatal(err)
+		logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "ERROR", Message: app_errors.ErrFileAccess, Endpoint: c.Request.URL.Path, Status_code: http.StatusInternalServerError}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, logDetails)
+		return
 	}
 	c.JSON(http.StatusOK, &data)
 }

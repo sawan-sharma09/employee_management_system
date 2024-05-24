@@ -1,31 +1,28 @@
-package main
+package grpcserver
 
 import (
 	"fmt"
-	"grpc_new_server/conn"
 	"grpc_new_server/db"
 	"grpc_new_server/grpc_services/pb"
 	"grpc_new_server/grpc_services/utils"
 	"io"
-
-	"google.golang.org/grpc"
 )
 
-type server struct{}
+type Server struct{}
 
-func main() {
-	fmt.Println("--gRPC server--")
-	fmt.Println("Bidirectional streaming services started...")
+// func main() {
+// 	fmt.Println("--gRPC server--")
+// 	fmt.Println("Bidirectional streaming services started...")
 
-	s := grpc.NewServer()
-	pb.RegisterEmpServiceServer(s, &server{})
+// 	s := grpc.NewServer()
+// 	pb.RegisterEmpServiceServer(s, &server{})
 
-	if err := s.Serve(conn.Lis); err != nil {
-		fmt.Println("Error in listening: ", err)
-	}
-}
+// 	if err := s.Serve(conn.Lis); err != nil {
+// 		fmt.Println("Error in listening: ", err)
+// 	}
+// }
 
-func (*server) Bidi_Emp(stream pb.EmpService_Bidi_EmpServer) error {
+func (*Server) Bidi_Emp(stream pb.EmpService_Bidi_EmpServer) error {
 
 	for {
 		req, err := stream.Recv()
@@ -67,6 +64,6 @@ func (*server) Bidi_Emp(stream pb.EmpService_Bidi_EmpServer) error {
 	return nil
 }
 
-func (*server) MustEmbedUnimplementedEmpServiceServer() {
+func (*Server) MustEmbedUnimplementedEmpServiceServer() {
 	panic("Unimplemented...")
 }

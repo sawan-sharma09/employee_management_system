@@ -8,6 +8,7 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -22,15 +23,15 @@ func init() {
 		fmt.Println("Error in listening to port: ", err)
 	}
 
-	// envErr := godotenv.Load("./config/secret.env")
-	// if envErr != nil {
-	// 	fmt.Println("Error loading env file: ", envErr)
-	// }
+	envErr := godotenv.Load("./config/secret.env")
+	if envErr != nil {
+		fmt.Println("Error loading env file: ", envErr)
+	}
 
 	// Open a database connection
-	DbConnect, err = sql.Open("mysql", os.ExpandEnv("root:tiger@tcp(127.0.0.1:3306)/testdb"))
+	DbConnect, err = sql.Open("mysql", os.ExpandEnv("$MYSQL_DB_URL"))
 	if err != nil {
-		log.Fatal("Sql db connection error ", err)
+		log.Fatal("Sql db connection error :", err)
 	}
 
 	// Check if the connection is successful

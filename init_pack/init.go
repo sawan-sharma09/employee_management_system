@@ -2,7 +2,6 @@ package initpack
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -19,11 +19,11 @@ import (
 )
 
 var (
-	DbConn    *sql.DB
-	RedisPool *redis.Pool
-	Client    *pubsub.Client
-	Topic     *pubsub.Topic
-	Cc        *grpc.ClientConn
+	PostgresPool *pgxpool.Pool
+	RedisPool    *redis.Pool
+	Client       *pubsub.Client
+	Topic        *pubsub.Topic
+	Cc           *grpc.ClientConn
 )
 
 func init() {
@@ -32,46 +32,57 @@ func init() {
 func InitConn() {
 
 	var err error
-	var mysqlURL string
+	var redisURL, postgresURL string
 
 	enverr := godotenv.Load("./config/secret.env")
 	if enverr != nil {
-		log.Fatal("Error loading .env file", enverr)
+		fmt.Println("Error loading .env file for local", enverr)
 	}
 
-	env := flag.String("env", "", "Specify the environment(dev/staging)")
+	//env for dockerfile--ignore the error message in local system
+	docErr := godotenv.Load("/app/secret.env")
+	if docErr != nil {
+		fmt.Println("Error loading .env file for docker image")
+	}
+
+	env := flag.String("env", "", "Specify the environment(dev/staging/docker)")
 	flag.Parse()
 
 	//env flag
 	switch *env {
 	case "dev":
 		fmt.Println("Running in dev environment")
-		mysqlURL = os.ExpandEnv("$MYSQL_DB_URL")
+		redisURL = os.ExpandEnv("$REDIS_URL")
+		postgresURL = os.ExpandEnv("$POSTGRES_DB")
 	case "stage":
 		fmt.Println("Running in stage environment")
+	case "docker":
+		fmt.Println("Running in docker container environment")
+		redisURL = os.ExpandEnv("$REDIS_URL_DOCKER")
 	default:
 		log.Fatal("Invalid environment. Please specify 'dev' or 'stage'.")
 	}
 
-	// Open a database connection
-	DbConn, err = sql.Open("mysql", mysqlURL)
+	//postgres connection
+	// config, err := pgxpool.ParseConfig(postgresURL + "?sslmode=disable")
+	config, err := pgxpool.ParseConfig(postgresURL)
+
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error configuring the postgres database CSC: ", err)
 	}
+	config.MaxConns = 100                               //The maximum number of open connections in the pool. This option controls the concurrency of database access. Once this limit is reached, further requests for connections will block until a connection becomes available.
+	config.MinConns = 30                                //The minimum number of connections to keep open in the pool. Connections below this threshold will be opened to meet this requirement.
+	config.MaxConnLifetime = 0                          // Maximum lifetime of a connection (0 means no limit)
+	config.MaxConnIdleTime = 10 * time.Minute           // Maximum time a connection can be idle before it's closed
+	config.HealthCheckPeriod = 5 * time.Second          // Frequency of health checks (0 means no health checks)
+	config.ConnConfig.ConnectTimeout = 10 * time.Second // Maximum time to establish a new connection
 
-	DbConn.SetMaxOpenConns(100)                //The maximum number of open connections in the pool. This option controls the concurrency of database access. Once this limit is reached, further requests for connections will block until a connection becomes available.
-	DbConn.SetMaxIdleConns(30)                 // Maximum number of connections that can remain idle (i.e., not in use) in the pool at any given time. Keeping a certain number of idle connections can help improve performance by reducing the overhead of establishing new connections for subsequent database operations.
-	DbConn.SetConnMaxLifetime(0)               // Maximum lifetime of a connection (0 means no limit)
-	DbConn.SetConnMaxIdleTime(2 * time.Minute) // Maximum time a connection can be idle before it's closed
-
-	// Check if the connection is successful
-	dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if pingErr := DbConn.PingContext(dbCtx); pingErr != nil {
-		log.Fatal("Error pinging MySQL database: ", pingErr)
+	var configErr error
+	PostgresPool, configErr = pgxpool.NewWithConfig(context.Background(), config)
+	if configErr != nil {
+		log.Fatal("Error connecting to the postgres database CSC: ", configErr)
 	} else {
-		fmt.Println("MySQL db connected successfully")
+		fmt.Println("Postgres Db Connected Successfully for CSC")
 	}
 
 	//redis
@@ -80,7 +91,7 @@ func InitConn() {
 		MaxActive:   200,
 		IdleTimeout: 10 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", os.ExpandEnv("$REDIS_URL"), redis.DialTLSSkipVerify(true), redis.DialConnectTimeout(time.Duration(2)*time.Second))
+			c, err := redis.Dial("tcp", redisURL, redis.DialTLSSkipVerify(true), redis.DialConnectTimeout(time.Duration(2)*time.Second))
 			if err != nil {
 				fmt.Println("redis init dial err :", err)
 				return nil, err

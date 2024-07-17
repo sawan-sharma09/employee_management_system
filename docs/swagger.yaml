@@ -1,0 +1,235 @@
+basePath: /
+definitions:
+  app_errors.ErrorTemplate:
+    properties:
+      endpoint:
+        type: string
+      level:
+        type: string
+      message:
+        type: string
+      status_code:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  util.Credentials:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  util.Employee:
+    properties:
+      department:
+        type: string
+      id:
+        type: integer
+      name:
+        maxLength: 30
+        minLength: 2
+        type: string
+      salary:
+        minimum: 1
+        type: number
+    required:
+    - department
+    - id
+    - name
+    - salary
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is an Employee Management System API
+  title: EMS API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Check the aliveness of the application
+      responses:
+        "200":
+          description: Gin Application working
+          schema:
+            type: string
+      summary: Check if the application is running
+      tags:
+      - Health
+  /v1/create_employee:
+    post:
+      consumes:
+      - application/json
+      description: Create a new employee record
+      parameters:
+      - description: Employee Data
+        in: body
+        name: employee
+        required: true
+        schema:
+          $ref: '#/definitions/util.Employee'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 'Employee created with ID: X'
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+      security:
+      - BearerAuth: []
+      summary: Create a new employee
+      tags:
+      - Employee
+  /v1/delete_employee/{id}:
+    delete:
+      description: Delete an employee by ID
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Employee deleted successfully
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+      security:
+      - BearerAuth: []
+      summary: Delete an employee
+      tags:
+      - Employee
+  /v1/get_employee/{id}:
+    get:
+      description: Fetch a record of a specific employee by ID
+      parameters:
+      - description: Employee ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/util.Employee'
+        "404":
+          description: Employee not found
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+      security:
+      - BearerAuth: []
+      summary: Get a single employee
+      tags:
+      - Employee
+  /v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Login endpoint to authenticate user and issue JWT token
+      parameters:
+      - description: User Credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/util.Credentials'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User Authenticated Successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+        "401":
+          description: Invalid Credentials
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+      summary: Authenticate user and issue JWT token
+      tags:
+      - Authentication
+  /v1/refresh:
+    post:
+      description: Endpoint to refresh JWT token using the refresh token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token Refreshed Successfully
+          schema:
+            type: string
+        "400":
+          description: Invalid refresh token
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+        "401":
+          description: Invalid token
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+      summary: Refresh JWT token
+      tags:
+      - Authentication
+  /v1/update_employee:
+    put:
+      consumes:
+      - application/json
+      description: Update an employee record
+      parameters:
+      - description: Employee Data
+        in: body
+        name: employee
+        required: true
+        schema:
+          $ref: '#/definitions/util.Employee'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Employee updated successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_errors.ErrorTemplate'
+      security:
+      - BearerAuth: []
+      summary: Update an employee
+      tags:
+      - Employee
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: '"JWT Authorization header using the Bearer scheme. Example: \"Authorization:
+      Bearer {token}\""'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

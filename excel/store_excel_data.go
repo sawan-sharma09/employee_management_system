@@ -1,6 +1,7 @@
 package excel
 
 import (
+	"context"
 	"fmt"
 	"managedata/app_errors"
 	"managedata/db"
@@ -44,8 +45,8 @@ func StoreImporteddata(c *gin.Context) {
 			emp.Salary, _ = strconv.ParseFloat(row[3], 64)
 
 			// Insert data into the database
-			insertquery := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s) VALUES (?, ?, ?, ?)", fileName, rows[0][0], rows[0][1], rows[0][2], rows[0][3])
-			_, Conn_err := initpack.DbConn.Exec(insertquery, emp.ID, emp.Name, emp.Department, emp.Salary)
+			insertquery := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s) VALUES ($1, $2, $3, $4)", fileName, rows[0][0], rows[0][1], rows[0][2], rows[0][3])
+			_, Conn_err := initpack.PostgresPool.Exec(context.Background(), insertquery, emp.ID, emp.Name, emp.Department, emp.Salary)
 			if Conn_err != nil {
 				fmt.Println("Error inserting data into database:", Conn_err.Error())
 				errorStrings = append(errorStrings, Conn_err.Error())

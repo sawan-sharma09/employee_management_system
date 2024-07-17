@@ -8,7 +8,11 @@ import (
 	redisops "managedata/redisOps"
 	"managedata/services"
 
+	_ "managedata/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"golang.org/x/time/rate"
 )
 
@@ -18,6 +22,9 @@ func NewRouter() *gin.Engine {
 	//Middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+
+	// Swagger endpoint
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	//Checks the aliveness of the application without JWT
 	r.GET("/", services.Appstart)

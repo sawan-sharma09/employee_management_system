@@ -12,7 +12,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-var FilePath string = "./docs/employee_details.xlsx"
+var FilePath string = "./emp_docs/employees.xlsx"
 
 func OpenExcelFile() ([][]string, error) {
 	xlsx, err := excelize.OpenFile(FilePath)

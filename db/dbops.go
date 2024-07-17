@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	initpack "managedata/init_pack"
@@ -17,15 +18,15 @@ func CreateTableIfNotExists(tablename string, column []string) error {
 
 	createQuery := fmt.Sprintf(`
 	CREATE TABLE %s (
-		%s INT AUTO_INCREMENT PRIMARY KEY,
+		%s SERIAL PRIMARY KEY,
 		%s VARCHAR(255) NOT NULL,
 		%s VARCHAR(255),
 		%s DECIMAL(10, 2)
 	);
 `, tablename, column[0], column[1], column[2], column[3])
 
-	_, err = initpack.DbConn.Exec(createQuery)
-	if err != nil {
+	_, execErr := initpack.PostgresPool.Exec(context.Background(), createQuery)
+	if execErr != nil {
 		return err
 	}
 
@@ -34,11 +35,18 @@ func CreateTableIfNotExists(tablename string, column []string) error {
 }
 
 func TableExists(tableName string) (bool, error) {
-	query := fmt.Sprintf("SHOW TABLES LIKE '%s'", tableName)
-	rows, err := initpack.DbConn.Query(query)
+
+	query := `
+	SELECT EXISTS (
+		SELECT FROM information_schema.tables 
+		WHERE table_schema = 'public' 
+		AND table_name = $1
+	);
+`
+	var exists bool
+	err := initpack.PostgresPool.QueryRow(context.Background(), query, tableName).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
-	defer rows.Close()
-	return rows.Next(), nil
+	return exists, nil
 }

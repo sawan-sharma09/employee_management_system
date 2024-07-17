@@ -1,7 +1,9 @@
 package services
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"managedata/app_errors"
 	grpcServices "managedata/grpc_services/grpc_client"
@@ -17,24 +19,42 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// @Tags			Health
+// @Summary		Check if the application is running
+// @Description	Check the aliveness of the application
+// @Success		200	{string}	string	"Gin Application working"
+// @Router			/ [get]
 func Appstart(c *gin.Context) {
 	c.String(http.StatusOK, "Gin Application working")
 }
 
+// @Tags			Employee
+// @Summary		Get a single employee
+// @Description	Fetch a record of a specific employee by ID
+// @Param			id	path		int	true	"Employee ID"
+// @Success		200	{object}	util.Employee
+// @Failure		404	{object}	app_errors.ErrorTemplate "Employee not found"
+// @Failure		500	{object}	app_errors.ErrorTemplate
+// @Security		BearerAuth
+// @Router			/v1/get_employee/{id} [get]
 func GetSingleEmployee(c *gin.Context) {
 	id := c.Param("id")
 	var emp util.Employee
-	err := initpack.DbConn.QueryRow("SELECT * FROM employee_details WHERE id=?", id).Scan(&emp.ID, &emp.Name, &emp.Department, &emp.Salary)
+	err := initpack.PostgresPool.QueryRow(context.Background(), "SELECT * FROM employees WHERE id=$1", id).Scan(&emp.ID, &emp.Name, &emp.Department, &emp.Salary)
+	fmt.Println("err---->", err)
+	fmt.Println("Errnorows---->", sql.ErrNoRows)
+	fmt.Println(errors.Is(err, sql.ErrNoRows))
+
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err.Error() == app_errors.ErrEmployeeNotFound {
 			fmt.Println("Employee not found with id: ", id)
 			logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "ERROR", Message: "Employee not found with id: " + id, Endpoint: c.Request.URL.Path, Status_code: http.StatusInternalServerError}
-			c.JSON(http.StatusInternalServerError, logDetails)
+			c.JSON(http.StatusNotFound, logDetails)
 			return
 		} else {
 			fmt.Println("Error in Mysql Select operation --> " + err.Error())
 			logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "ERROR", Message: app_errors.ErrDbRetrieve, Endpoint: c.Request.URL.Path, Status_code: http.StatusNotFound}
-			c.JSON(http.StatusNotFound, logDetails)
+			c.JSON(http.StatusInternalServerError, logDetails)
 			return
 		}
 	}
@@ -46,6 +66,17 @@ func GetSingleEmployee(c *gin.Context) {
 	})
 }
 
+// @Tags			Employee
+// @Summary		Create a new employee
+// @Description	Create a new employee record
+// @Accept			json
+// @Produce		json
+// @Param			employee	body		util.Employee	true	"Employee Data"
+// @Success		201			{string}	string			"Employee created with ID: X"
+// @Failure		400			{object}	app_errors.ErrorTemplate
+// @Failure		500			{object}	app_errors.ErrorTemplate
+// @Security		BearerAuth
+// @Router			/v1/create_employee [post]
 func CreateEmployee(c *gin.Context) {
 
 	var emp util.Employee
@@ -77,7 +108,7 @@ func CreateEmployee(c *gin.Context) {
 	}
 
 	// Insert the new employee into the Mysql database
-	_, conn_err := initpack.DbConn.Exec("INSERT INTO employee_details (id,name, department, salary) VALUES (? ,?, ?, ?)", emp.ID, emp.Name, emp.Department, emp.Salary)
+	_, conn_err := initpack.PostgresPool.Exec(context.Background(), "INSERT INTO employees (id,name, department, salary) VALUES ($1 ,$2, $3, $4)", emp.ID, emp.Name, emp.Department, emp.Salary)
 	if conn_err != nil {
 		fmt.Println("error in Mysql insert operation", conn_err)
 		logDetails := app_errors.ErrorTemplate{Timestamp: time.Now(), Level: "ERROR", Message: app_errors.ErrDataInsertion + conn_err.Error(), Endpoint: c.Request.URL.Path, Status_code: http.StatusInternalServerError}
@@ -93,6 +124,16 @@ func CreateEmployee(c *gin.Context) {
 	c.String(http.StatusCreated, "Employee created with ID: "+fmt.Sprint(emp.ID))
 }
 
+//	@Tags			Employee
+//	@Summary		Delete an employee
+//	@Description	Delete an employee by ID
+//	@Param			id	path		string	true	"Employee ID"
+//	@Success		200	{string}	string	"Employee deleted successfully"
+//	@Failure		404	{object}	app_errors.ErrorTemplate
+//	@Failure		500	{object}	app_errors.ErrorTemplate
+//
+// @Security		BearerAuth
+// @Router			/v1/delete_employee/{id} [delete]
 func DeleteEmployee(c *gin.Context) {
 
 	id := c.Param("id")
@@ -109,7 +150,7 @@ func DeleteEmployee(c *gin.Context) {
 	}
 
 	// Delete the employee data from the  Mysql database
-	_, deleteErr := initpack.DbConn.Exec("DELETE FROM employee_details WHERE id=?", id)
+	_, deleteErr := initpack.PostgresPool.Exec(context.Background(), "DELETE FROM employees WHERE id=$1", id)
 	if deleteErr != nil {
 		fmt.Println("Error in Mysql delete operation : ", deleteErr)
 
@@ -130,6 +171,17 @@ func DeleteEmployee(c *gin.Context) {
 	c.String(http.StatusOK, "Employee deleted successfully")
 }
 
+//	@Tags			Employee
+//	@Summary		Update an employee
+//	@Description	Update an employee record
+//	@Accept			json
+//	@Produce		json
+//	@Param			employee	body		util.Employee	true	"Employee Data"
+//	@Success		200			{string}	string			"Employee updated successfully"
+//	@Failure		400			{object}	app_errors.ErrorTemplate
+//
+// @Security		BearerAuth
+// @Router			/v1/update_employee [put]
 func UpdateEmployeeNew(c *gin.Context) {
 	var emp util.Employee
 

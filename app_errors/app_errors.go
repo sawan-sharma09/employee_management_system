@@ -21,6 +21,7 @@ var (
 	ErrDbRetrieve          = "error retrieving employee details from database"
 	ErrDbInsert            = "an error occurred while performing the insert operation"
 	ErrDataDeletion        = "an error occurred while deleting the record. Please try again later"
+	ErrEmployeeNotFound    = "no rows in result set"
 )
 
 type ErrorTemplate struct {

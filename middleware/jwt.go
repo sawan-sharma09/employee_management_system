@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -34,7 +35,18 @@ type RefreshClaims struct {
 	jwt.StandardClaims
 }
 
-// Login handler to authenticate users and issue JWT tokens
+// Login godoc
+//
+//	@Summary		Authenticate user and issue JWT token
+//	@Description	Login endpoint to authenticate user and issue JWT token
+//	@Tags			Authentication
+//	@Accept			json
+//	@Produce		json
+//	@Param			credentials	body		util.Credentials			true	"User Credentials"
+//	@Success		200			{string}	string						"User Authenticated Successfully"
+//	@Failure		400			{object}	app_errors.ErrorTemplate	"Invalid request body"
+//	@Failure		401			{object}	app_errors.ErrorTemplate	"Invalid Credentials"
+//	@Router			/v1/login [post]
 func Login(c *gin.Context) {
 	var credentials util.Credentials
 
@@ -96,9 +108,19 @@ func Login(c *gin.Context) {
 	c.SetCookie("token", tokenString, int(time.Until(expirationTime).Seconds()), "/", "", false, true)
 	c.SetCookie("refresh_token", refreshTokenString, int(time.Until(refreshExpirationTime).Seconds()), "/", "", false, true)
 
-	c.String(http.StatusOK, "User Authenticated Successfully")
+	fmt.Println("Token string in login: ", tokenString)
+
+	c.JSON(http.StatusOK, gin.H{"message": "User Authenticated Successfully", "token": tokenString, "refresh_token": refreshTokenString})
 }
 
+// @Summary		Refresh JWT token
+// @Description	Endpoint to refresh JWT token using the refresh token
+// @Tags			Authentication
+// @Produce		json
+// @Success		200	{string}	string						"Token Refreshed Successfully"
+// @Failure		400	{object}	app_errors.ErrorTemplate	"Invalid refresh token"
+// @Failure		401	{object}	app_errors.ErrorTemplate	"Invalid token"
+// @Router			/v1/refresh [post]
 func Refresh(c *gin.Context) {
 	refreshTokenString, err := c.Cookie("refresh_token")
 	if err != nil {
@@ -148,7 +170,7 @@ func Refresh(c *gin.Context) {
 	c.SetCookie("token", tokenString, int(time.Until(expirationTime).Seconds()), "/", "", false, true)
 
 	fmt.Println("Token has been refreshed..")
-	c.String(http.StatusOK, "Token Refreshed Successfully")
+	c.JSON(http.StatusOK, gin.H{"message": "Token Refresh Successfully", "token": tokenString})
 
 }
 
@@ -183,8 +205,18 @@ func extractToken(c *gin.Context) string {
 		parts := strings.Split(token, " ")
 		if len(parts) == 2 && parts[0] == "Bearer" {
 			return parts[1]
+		} else {
+			return token
 		}
 	}
+
+	// If token is not found in Authorization header, try extracting from cookie
+	cookieToken, err := c.Cookie("token")
+	fmt.Println("Cookie token in extractoken:", cookieToken)
+	if err == nil && cookieToken != "" {
+		return cookieToken
+	}
+
 	return ""
 }
 
@@ -210,7 +242,7 @@ func isValidUser(credentials util.Credentials) (string, bool) {
 	var realPassword, userRole string
 
 	// Prepare SQL statement to query the user credentials
-	err := initpack.DbConn.QueryRow("SELECT password,role FROM cred_manager WHERE username=?", credentials.Username).Scan(&realPassword, &userRole)
+	err := initpack.PostgresPool.QueryRow(context.Background(), "SELECT password,role FROM cred_manager WHERE username=$1", credentials.Username).Scan(&realPassword, &userRole)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Printf("User %s not found", credentials.Username)
